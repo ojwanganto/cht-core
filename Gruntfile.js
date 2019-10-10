@@ -590,6 +590,13 @@ module.exports = function(grunt) {
           'npm run travis'
         ].join(' && ')
       },
+      'test-default': {
+        cmd: [
+          'cd config/default',
+          'npm ci',
+          'npm run travis'
+        ].join(' && ')
+      },
       'shared-lib-unit': {
         cmd: () => {
           const sharedLibs = getSharedLibDirs();
@@ -1111,7 +1118,8 @@ module.exports = function(grunt) {
     'build',
     'mochaTest:api-integration',
     'unit',
-    'exec:test-standard'
+    'exec:test-standard',
+    'exec:test-default',
   ]);
 
   grunt.registerTask('ci-e2e', 'Run e2e tests for CI', [
