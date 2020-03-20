@@ -12,9 +12,9 @@ let listener;
 let init;
 let request;
 
-const getProcessedSeq = () => {
+const getTransitionSeq = () => {
   return metadata
-    .getProcessedSeq()
+    .getTransitionSeq()
     .catch(err => {
       logger.error('transitions: error fetching processed seq: %o', err);
       return;
@@ -40,7 +40,7 @@ const registerFeed = seq => {
 
 const listen = () => {
   if (!init) {
-    init = getProcessedSeq().then(seq => registerFeed(seq));
+    init = getTransitionSeq().then(seq => registerFeed(seq));
   }
 };
 

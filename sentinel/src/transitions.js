@@ -59,7 +59,7 @@ const changeQueue = async.queue((change, callback) => {
 const updateMetadata = (change, callback) => {
   processed++;
   metadata
-    .update(change.seq)
+    .updateTransitionSeq(change.seq)
     .then(() => callback())
     .catch(callback);
 };

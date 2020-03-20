@@ -29,7 +29,7 @@ describe('transitions', () => {
     });
 
     it('handles an empty change', done => {
-      sinon.stub(metadata, 'update').resolves();
+      sinon.stub(metadata, 'updateTransitionSeq').resolves();
       const listen = sinon.stub(feed, 'listen');
       sinon.stub(transitions._transitionsLib, 'processChange').callsArgWith(1);
 
@@ -40,7 +40,7 @@ describe('transitions', () => {
         return Promise.resolve().then(() => {
           assert.equal(transitions._transitionsLib.processChange.callCount, 0);
           return Promise.resolve().then(() => {
-            assert.equal(metadata.update.callCount, 0);
+            assert.equal(metadata.updateTransitionSeq.callCount, 0);
             done();
           });
         });
@@ -50,7 +50,7 @@ describe('transitions', () => {
     it('processes deleted changes through TombstoneUtils to create tombstones', done => {
       sinon.stub(transitions._transitionsLib, 'loadTransitions').returns();
       sinon.stub(tombstoneUtils, 'processChange').resolves();
-      sinon.stub(metadata, 'update').resolves();
+      sinon.stub(metadata, 'updateTransitionSeq').resolves();
       sinon.stub(infodoc, 'delete').resolves();
       sinon.stub(db, 'allDbs').resolves([]);
       const listen = sinon.stub(feed, 'listen');
@@ -69,8 +69,8 @@ describe('transitions', () => {
             deleted: true,
           });
           return Promise.resolve().then(() => {
-            assert.equal(metadata.update.callCount, 1);
-            assert.equal(metadata.update.args[0][0], 55);
+            assert.equal(metadata.updateTransitionSeq.callCount, 1);
+            assert.equal(metadata.updateTransitionSeq.args[0][0], 55);
             done();
           });
         });
@@ -79,7 +79,7 @@ describe('transitions', () => {
 
     it('does not advance metadata document if creating tombstone fails', done => {
       sinon.stub(tombstoneUtils, 'processChange').rejects();
-      sinon.stub(metadata, 'update').resolves();
+      sinon.stub(metadata, 'updateTransitionSeq').resolves();
       sinon.stub(infodoc, 'delete').resolves();
       sinon.stub(db, 'allDbs').resolves([]);
       const listen = sinon.stub(feed, 'listen');
@@ -96,7 +96,7 @@ describe('transitions', () => {
             deleted: true,
           });
           return Promise.resolve().then(() => {
-            assert.equal(metadata.update.callCount, 0);
+            assert.equal(metadata.updateTransitionSeq.callCount, 0);
             done();
           });
         });
@@ -104,7 +104,7 @@ describe('transitions', () => {
     });
 
     it('runs transitions lib over changes', done => {
-      sinon.stub(metadata, 'update').resolves();
+      sinon.stub(metadata, 'updateTransitionSeq').resolves();
       const listen = sinon.stub(feed, 'listen');
       sinon.stub(transitions._transitionsLib, 'processChange').callsArgWith(1);
 
@@ -116,8 +116,8 @@ describe('transitions', () => {
           assert.equal(transitions._transitionsLib.processChange.callCount, 1);
           assert.deepEqual(transitions._transitionsLib.processChange.args[0][0], { id: 'somechange', seq: 55 });
           return Promise.resolve().then(() => {
-            assert.equal(metadata.update.callCount, 1);
-            assert.equal(metadata.update.args[0][0], 55);
+            assert.equal(metadata.updateTransitionSeq.callCount, 1);
+            assert.equal(metadata.updateTransitionSeq.args[0][0], 55);
             done();
           });
         });

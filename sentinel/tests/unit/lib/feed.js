@@ -26,7 +26,7 @@ describe('feed', () => {
   describe('initialization', () => {
 
     it('handles missing meta data doc', () => {
-      sinon.stub(metadata, 'getProcessedSeq').rejects({ status: 404 });
+      sinon.stub(metadata, 'getTransitionSeq').rejects({ status: 404 });
       return feed.listen().then(() => {
         chai.expect(db.medic.changes.callCount).to.equal(1);
         chai.expect(db.medic.changes.args[0][0]).to.deep.equal({ live: true, since: undefined });
@@ -35,7 +35,7 @@ describe('feed', () => {
     });
 
     it('uses existing meta data doc', () => {
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       return feed.listen().then(() => {
         chai.expect(db.medic.changes.callCount).to.equal(1);
         chai.expect(db.medic.changes.args[0][0]).to.deep.equal({ live: true, since: '123' });
@@ -45,7 +45,7 @@ describe('feed', () => {
     });
 
     it('does not register listener twice', () => {
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       return feed.listen()
         .then(() => feed.listen())
         .then(() => {
@@ -56,7 +56,7 @@ describe('feed', () => {
     it('restarts listener after db error', done => {
       const clock = sinon.useFakeTimers();
       const change = { id: 'some-uuid' };
-      sinon.stub(metadata, 'getProcessedSeq')
+      sinon.stub(metadata, 'getTransitionSeq')
         .onCall(0).resolves('123')
         .onCall(1).resolves('456');
       feed
@@ -93,7 +93,7 @@ describe('feed', () => {
 
     it('invokes callback with changes', done => {
       const change = { id: 'some-uuid' };
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       sinon.stub(tombstoneUtils, 'isTombstoneId').returns(false);
       feed
         .listen(c => {
@@ -109,7 +109,7 @@ describe('feed', () => {
     it('ignores ddocs', done => {
       const ddoc = { id: '_design/medic' };
       const edoc = { id: 'some-uuid' };
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       sinon.stub(tombstoneUtils, 'isTombstoneId').returns(false);
       feed
         .listen(change => {
@@ -126,7 +126,7 @@ describe('feed', () => {
     it('ignores info docs', done => {
       const infodoc = { id: 'some-uuid-info' };
       const doc = { id: 'some-uuid' };
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       sinon.stub(tombstoneUtils, 'isTombstoneId').returns(false);
       feed
         .listen(change => {
@@ -143,7 +143,7 @@ describe('feed', () => {
     it('ignores tombstones', done => {
       const tombstone = { id: 'tombstone' };
       const doc = { id: 'some-uuid' };
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       sinon.stub(tombstoneUtils, 'isTombstoneId')
         .withArgs(tombstone.id).returns(true)
         .withArgs(doc.id).returns(false);
@@ -165,7 +165,7 @@ describe('feed', () => {
   describe('cancel', () => {
 
     it('cancels the couch request', done => {
-      sinon.stub(metadata, 'getProcessedSeq').resolves('123');
+      sinon.stub(metadata, 'getTransitionSeq').resolves('123');
       feed
         .listen(() => done(new Error('wrong callback notified')))
         .then(() => feed.cancel())

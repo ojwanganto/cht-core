@@ -14,7 +14,7 @@ const getMetaData = () => {
     .then(doc => Object.assign({}, METADATA_TEMPLATE, doc));
 };
 
-const getProcessedSeq = () => {
+const getTransitionSeq = () => {
   return getMetaData()
     .then(doc => doc.transitions_seq)
     .catch(err => {
@@ -23,24 +23,60 @@ const getProcessedSeq = () => {
     });
 };
 
-// TODO: Make thread safe
-const updateMetaData = seq => {
+// Strategy to make writes thread safe.
+//
+// Writes get "queued" onto changes, the callback queued into callbacks, then a
+// write is attempted. Inside one "atomic" block we take all queued changes and
+// their callbacks and write them
+//
+// If there are two writes one after the other in the execution stack the first
+// one will go for getMetadata in writeMaybe, which lets the second one write
+// to changes and callbacks and queue up to call getMetadata as well. Whichever
+// one gets it first will "take" the changes and callbacks into its local instance
+// of that block and use them. The second one will find no changes to write and
+// backs out.
+let changes = {};
+let callbacks = [];
+
+const writeMaybe = () => {
   return getMetaData()
     .then(doc => {
-      doc.transitions_seq = seq;
-      return db.sentinel.put(doc).catch(err => {
-        if (err) {
-          logger.error('Error updating metaData: %o', err);
-        }
-      });
-    })
-    .catch(err => {
-      logger.error('Error fetching metaData for update: %o', err);
-      return null;
+      // If another "thread" has performed the write just backout
+      if (!Object.keys(changes)) {
+        return;
+      }
+
+      // hold the callbacks as ours so we can wipe the shared location
+      const heldCallbacks = callbacks;
+      callbacks = [];
+
+      const writes = Object.assign({}, doc, changes);
+      changes = {};
+
+      return db.sentinel.put(writes)
+        .then(() => undefined)
+        .catch(err => err)
+        .then(err => heldCallbacks.forEach(cb => cb(err)));
     });
 };
 
+const update = (key, value) => {
+  return new Promise((resolve, reject) => {
+    if (changes[key]) {
+      return reject(
+        Error(`Tried to write ${key} with '${value}' but val '${changes[key]}' already queued`));
+    }
+
+    changes[key] = value;
+    callbacks.push((err) => err ? reject(err) : resolve());
+
+    writeMaybe();
+  });
+};
+
+
 module.exports = {
-  getProcessedSeq: () => getProcessedSeq(),
-  update: seq => updateMetaData(seq),
+  getTransitionSeq: () => getTransitionSeq(),
+  updateTransitionSeq: seq => update('transitions_seq', seq),
+  _update: update
 };
