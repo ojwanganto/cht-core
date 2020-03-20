@@ -636,7 +636,7 @@ module.exports = {
       sentinel.get('_local/sentinel-meta-data'),
       db.info()
     ]).then(([sentinelMetadata, {update_seq: updateSeq}]) => {
-      sentinelMetadata.processed_seq = updateSeq;
+      sentinelMetadata.transitions_seq = updateSeq;
       return sentinel.put(sentinelMetadata);
     });
   },
