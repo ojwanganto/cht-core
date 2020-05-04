@@ -25,6 +25,7 @@ const AVAILABLE_TRANSITIONS = [
   'update_clinics',
   'registration',
   'accept_patient_reports',
+  'case_reports',
   'generate_shortcode_on_contacts',
   'generate_patient_id_on_people',
   'default_responses',
