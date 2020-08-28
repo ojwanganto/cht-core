@@ -4,6 +4,6 @@
     "context": {
         "place": false,
         "person": true,
-        "expression": "contact.contact_type =='person' && (summary.recentHtsTracing.phoneTraceOutcome != 'responded' && summary.recentHtsTracing.physicalTraceOutcome != 'available')"
+        "expression": "!contact.muted  && contact.contact_type =='person' && (summary.recentHtsTracing.phoneTraceOutcome != 'responded' && summary.recentHtsTracing.physicalTraceOutcome != 'available')"
     }
 }

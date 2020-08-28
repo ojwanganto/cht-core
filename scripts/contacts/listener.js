@@ -7,7 +7,7 @@ PouchDB.plugin(require('pouchdb-adapter-http'));
 PouchDB.plugin(require('pouchdb-mapreduce'));
 
 const CONTACT_TYPES = {
-  case: 'clinic', // trace_case
+  case: 'trace_case', // trace_case
   suspected_case: 'clinic', // suspected_case
   parent_health_facility: 'health_center',
   forwarded_case: 'clinic',// forward_case
@@ -153,6 +153,7 @@ const createNewClientDocument = item => {
     type: 'clinic',
     contact_type: 'clinic',
     record_originator: 'kenyaemr',
+    record_purpose: 'testing',
     reported_date: item.reported_date
   };
   for (const key of Object.keys(item.fields)) {
@@ -167,6 +168,30 @@ const createNewClientDocument = item => {
 
   newClient['contacts'] = item.contacts;
   return newClient;
+};
+
+const createLinkageClientDocument = item => {
+    const newClient = {
+        _id: uuidv4(),
+        kemr_uuid: item._id,
+        type: 'clinic',
+        contact_type: 'clinic',
+        record_originator: 'kenyaemr',
+        record_purpose: 'linkage',
+        reported_date: item.reported_date
+    };
+    for (const key of Object.keys(item.fields)) {
+        if (!EXCLUDED_KEYS.includes(key) && !!item.fields[key]) {
+            newClient[key] = item.fields[key];
+        }
+    }
+
+    if (!newClient.client_name) {
+        newClient.client_name = [newClient.patient_firstName, newClient.patient_familyName, newClient.patient_middleName].join(' ').replace(/\s+/, ' ');
+    }
+
+    newClient['contacts'] = item.contacts;
+    return newClient;
 };
 
 const extractContactDetails = (item, retainReference) => {
@@ -233,9 +258,16 @@ const moveClientsToHealthFacility = async (db, newCases, counties) => {
     const suspectedCase = cases.suspectedCase;
     const covidCase = existingCase || forwardedCase || suspectedCase;
     const existingCaseType = (covidCase || {}).contact_type;
-    const newClient = createNewClientDocument(item);
+    let newClientObj;
+    if (item.record_purpose === 'linkage') {
+        newClientObj = createLinkageClientDocument(item);
+    } else {
+        newClientObj = createNewClientDocument(item);
+    }
 
-    //delete report from EMR
+    const newClient = newClientObj;
+
+        //delete report pushed from EMR
     docsToCreate.push({ _id: item._id, _rev: item._rev, _deleted: true });
 
     if (!existingCaseType) {
@@ -245,9 +277,10 @@ const moveClientsToHealthFacility = async (db, newCases, counties) => {
         // parent new case to the contact's grand parent
         parent = cases.transitionedContact.parent.parent;
         // change contact type
-        newClient.contact_type = CONTACT_TYPES.case;
+        newClient.contact_type = CONTACT_TYPES.forwarded_case; // using this for clinic
+          console.warn(`Processing contact with uuid: ${item._id}.`);
 
-        // for contacts that become cases
+          // for contacts that become cases
         const contact = Object.assign({}, cases.transitionedContact);
         contact.transitioned_to_case = newClient._id;
         contact.muted = true;
@@ -269,12 +302,12 @@ const moveClientsToHealthFacility = async (db, newCases, counties) => {
 
         // =================== trying to add contacts
 
-      newClient.contacts.forEach(contactData => {
+      /*newClient.contacts.forEach(contactData => {
         const contact = extractContactDetails(contactData, true);
         contact.parent = minifyLineage({ _id: newClient._id, parent: newClient.parent });
         contact.kemr_uuid = newClient.kemr_uuid;
         docsToCreate.push(contact);
-      });
+      });*/
 
       // =================== end of adding contacts
 

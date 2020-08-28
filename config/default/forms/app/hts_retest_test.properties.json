@@ -4,7 +4,7 @@
         "context": {
                 "person": false,
                 "place": true,
-                "expression": "contact.contact_type === 'clinic' && ( !summary.has_hts_initial || (summary.hts_retest_latest.final_result && summary.hts_retest_latest.final_result != '_703_positive_99DCT') || (summary.hts_latest_form.form_type === 'hts_initial_form' && summary.hts_latest_consent.consent === '_1065_yes_99DCT'))"
+                "expression": "!contact.muted && contact.contact_type === 'clinic' && contact.record_purpose !== 'linkage' && ( !summary.has_hts_initial || (summary.hts_retest_latest.final_result && summary.hts_retest_latest.final_result != '_703_positive_99DCT') || (summary.hts_latest_form.form_type === 'hts_initial_form' && summary.hts_latest_consent.consent === '_1065_yes_99DCT'))"
         }
 
 }
