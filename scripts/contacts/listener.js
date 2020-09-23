@@ -5,11 +5,12 @@ const PouchDB = require('pouchdb-core');
 
 PouchDB.plugin(require('pouchdb-adapter-http'));
 PouchDB.plugin(require('pouchdb-mapreduce'));
+PouchDB.plugin(require('pouchdb-find'));
 
 const CONTACT_TYPES = {
   case: 'clinic', // trace_case
   suspected_case: 'clinic', // suspected_case
-  parent_health_facility: 'health_center',
+  parent_health_facility: 'district_hospital',
   forwarded_case: 'clinic',// forward_case
   contact: 'person' // trace_contact
 };
@@ -26,8 +27,12 @@ const cache = level('cache');
 
 
 let COUCH_URL;
+let COUCH_USER_URL;
 try {
   COUCH_URL = new URL(process.env.COUCH_URL);
+  COUCH_USER_URL = new URL(process.env.COUCH_URL);
+  COUCH_USER_URL.pathname = '_users';
+  console.log('User URL: ' + COUCH_USER_URL);
 
   if (COUCH_URL.pathname !== '/medic') {
     COUCH_URL.pathname = '/medic';
@@ -40,6 +45,7 @@ try {
 }
 
 const couchdb = new PouchDB(COUCH_URL.href);
+const couchdbUsers = new PouchDB(COUCH_USER_URL.href);
 
 const getUTCTimestamp = () => new Date(Date.now() + (new Date().getTimezoneOffset() * 60000)).getTime();
 
@@ -108,6 +114,14 @@ const getDocsFromChangeSet = async (db, changeSet) => {
   return result;
 };
 
+const getParentPlaceForUser = async (db, username) => {
+
+  const foundUser = await db.get(`org.couchdb.user:${username}`);
+  if (foundUser && foundUser.facility_id) {
+      return foundUser.facility_id;
+  }
+    return null;
+};
 const getDocsMap = async (db, docs) => {
   const options = {
     include_docs: false,
@@ -247,6 +261,7 @@ const moveClientsToHealthFacility = async (db, newCases, counties) => {
     cases.transitionedSuspectedCase = await getCase(db, CONTACT_TYPES.case, '_id', item.fields.cht_ref_uuid);
     cases.transitionedContact = await getCase(db, CONTACT_TYPES.contact, '_id', item.fields.cht_ref_uuid);
 
+
     const docsToCreate = [];
     /*
      When we transition suspected cases to confirmed cases, we'll change it's contact type
@@ -287,11 +302,14 @@ const moveClientsToHealthFacility = async (db, newCases, counties) => {
         docsToCreate.push(contact);
 
       } else {
-        const countyMatcher = new RegExp(newClient.county || 'xyz-sentinel', 'i');
-        parent = counties.filter(county => countyMatcher.test(county.name))[0];
+        if (item.assignee) {
+            const userObj = await getParentPlaceForUser(couchdbUsers, item.assignee);
+            parent = await db.get(userObj);
+            //const peerLineage = minifyLineage(Object.assign({}, { _id: userArea._id, parent: userArea.parent }));
+        }
 
-        if (!parent || !newClient.county) {
-          console.warn(`No matching county found for Case with KenyaEMR Reference: ${item._id}. Assigning to National Office.`);
+        if (!parent || !newClient.assignee) {
+          console.warn(`Adding this client/patient to the health facility: ${item._id}`);
           parent = parentHealthFacility;
         }
       }
@@ -378,6 +396,53 @@ const createMutingDocument = item => {
   };
 };
 
+const effectAssignmentOfCases = async (db, cases) => {
+    cases.forEach(async item => {
+        const docsToCreate = [];
+        if (!item.assignee) {
+            console.warn(`Case ID: <${item._id}> KEMR REF: <${item.kemr_uuid}> Case Name: <${item.name}> not yet assined to a tracer`);
+            return;
+        }
+
+        // delete the case we are moving
+        docsToCreate.push({ _id: item._id, _rev: item._rev, _deleted: true });
+
+        // get new parent
+        const parentPlace = await db.get(item.assignee);
+        const caseLineage = minifyLineage(Object.assign({}, { _id: parentPlace._id, parent: parentPlace.parent }));
+
+        const allocatedCovidCase = {
+            _id: uuidv4(),
+            case_id: item.case_id,
+            name: item.name,
+            kemr_uuid: item.kemr_uuid,
+            county: item.county,
+            sub_county: item.subcounty,
+            parent: caseLineage,
+            type: 'contact',
+            contact_type: 'trace_case',
+            reported_date: item.reported_date,
+        };
+
+        const contactLineage = Object.assign({}, { _id: allocatedCovidCase._id, parent: caseLineage });
+
+        docsToCreate.push(allocatedCovidCase);
+
+        item.contacts.forEach(contactData => {
+            const contact = extractContactDetails(contactData, true);
+        contact.parent = contactLineage;
+        contact.kemr_uuid = allocatedCovidCase.kemr_uuid;
+        docsToCreate.push(contact);
+    });
+        docsToCreate.push(createMutingDocument(allocatedCovidCase));
+
+        if (docsToCreate.length > 0) {
+            console.info(`Effecting assignment of Case: ${allocatedCovidCase._id} with KEMR Reference: ${allocatedCovidCase.kemr_uuid}`);
+            const results = await db.bulkDocs(docsToCreate);
+            logPouchDBResults(results);
+        }
+    });
+};
 
 
 const updater = async () => {
