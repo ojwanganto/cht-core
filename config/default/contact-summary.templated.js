@@ -93,7 +93,10 @@ const fields = [
   { appliesToType: 'universal_client', label: 'person.address.sub_county', value: thisContact.patient_subcounty, width: 4 },
   { appliesToType: 'universal_client', label: 'person.address.ward', value: thisContact.patient_ward, width: 4 },
   { appliesToType: 'universal_client', label: 'person.address.village', value: thisContact.patient_village, width: 4 },
-  { appliesToType: 'universal_client', label: 'person.address.landmark', value: thisContact.patient_landmark, width: 4 },
+  { appliesToType: 'universal_client', label: 'person.address.landmark', value: thisContact.patient_landmark, width: 8 },
+  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: 'Index Client', value: thisContact.relation_name, width: 4 },
+  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: 'relationship', value: thisContact.relation_type, width: 4 },
+  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: '', value: `<a href='/#/contacts/${thisContact.relation_uuid}'><i class="fa fa-external-link" aria-hidden="true"></i> view client</a>`, width: 4, filter: 'safeHtml' },
   { appliesToType: 'universal_client', appliesIf: function () { return thisContact.parent && thisLineage[0]; }, label: 'client.facility', value: thisLineage, filter: 'lineage' },
   { appliesToType: 'universal_client', label: 'contact.notes', value: thisContact.notes, width: 12 },
   { appliesToType: 'patient_support_group', appliesIf: function () { return thisContact.parent && thisLineage[0]; }, label: 'client.facility', value: thisLineage, filter: 'lineage' }
@@ -107,7 +110,7 @@ if (thisContact.short_name) {
 const cards = [
   {
     label: 'HIV Testing profile',
-    appliesToType: 'clinic',
+    appliesToType: 'universal_client',
     appliesIf: function () {
       return true;
     },
