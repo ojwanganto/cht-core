@@ -48,6 +48,9 @@ context.hts_initial = {
   disability:getField(mostRecentHtsForm, 'observation._164951_disability_99DCT') || '',
   disability_type:getField(mostRecentHtsForm, 'observation._162558_disabilityTypeMULTISELECT_99DCT') || '',
   ever_tested:getField(mostRecentHtsForm, 'observation._164401_everTestedByProvider_99DCT') || '',
+  previous_settings: getField(mostRecentHtsForm, 'observation.test_setting') || '',
+  previous_hiv_self_test: getField(mostRecentHtsForm, 'observation._164952_HasClientdoneHIVselfTestInlast12months_99DCT') || '',
+  duration_since_last_test: getField(mostRecentHtsForm, 'observation._159813_durationSinceLastTest_99DCT') || '',
 
 };
 
@@ -58,6 +61,7 @@ context.hts_retest_latest = {
 
 context.hts_latest_consent = {
   consent:getField(mostRecentHtsForm, 'observation._1710_clientConsented_99DCT') || '',
+  eligibility: getField(mostRecentHtsForm, 'observation._162699_eligibleForTesting_99DCT') || '',
 };
 
 context.hts_latest_form = {
@@ -94,9 +98,8 @@ const fields = [
   { appliesToType: 'universal_client', label: 'person.address.ward', value: thisContact.patient_ward, width: 4 },
   { appliesToType: 'universal_client', label: 'person.address.village', value: thisContact.patient_village, width: 4 },
   { appliesToType: 'universal_client', label: 'person.address.landmark', value: thisContact.patient_landmark, width: 8 },
-  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: 'Index Client', value: thisContact.relation_name, width: 4 },
-  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: 'relationship', value: thisContact.relation_type, width: 4 },
-  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: '', value: `<a href='/#/contacts/${thisContact.relation_uuid}'><i class="fa fa-external-link" aria-hidden="true"></i> view client</a>`, width: 4, filter: 'safeHtml' },
+  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: 'Index Client', value: `<a href='/#/contacts/${thisContact.relation_uuid}'>${thisContact.relation_name}</a>`, width: 4, filter: 'safeHtml' },
+  { appliesToType: 'universal_client', appliesIf: function () { return thisContact.relation_uuid; }, label: 'Relationship', value: thisContact.relation_type, width: 4 },
   { appliesToType: 'universal_client', appliesIf: function () { return thisContact.parent && thisLineage[0]; }, label: 'client.facility', value: thisLineage, filter: 'lineage' },
   { appliesToType: 'universal_client', label: 'contact.notes', value: thisContact.notes, width: 12 },
   { appliesToType: 'patient_support_group', appliesIf: function () { return thisContact.parent && thisLineage[0]; }, label: 'client.facility', value: thisLineage, filter: 'lineage' }
